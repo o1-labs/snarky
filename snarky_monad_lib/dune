@@ -2,7 +2,7 @@
  (name snarky_monad_lib)
  (public_name snarky.monad_lib)
  (library_flags -linkall)
- (libraries core_kernel)
+ (libraries core)
  (preprocess
   (pps ppx_jane ppx_deriving.eq bisect_ppx -- --conditional))
  (synopsis "internal monad types for snarky"))

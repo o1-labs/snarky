@@ -1,6 +1,6 @@
 (** The usual Janestreet [Monad] interfaces, with [Let_syntax] included in the
     monad module. *)
-open Core_kernel
+open Core
 
 open Monad
 

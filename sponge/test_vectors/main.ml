@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 open Alcotest
 
 type test_vector = { input : string list; output : string }
@@ -19,7 +19,7 @@ let parse_test_vectors filepath =
   { name; test_vectors }
 
 let test_legacy_vectors () =
-  let cur_dir = Sys.getcwd () in
+  let cur_dir = Sys_unix.getcwd () in
   let test_vector_file = Filename.concat cur_dir "legacy.json" in
   let test_vectors = parse_test_vectors test_vector_file in
   check string "legacy name" "legacy" test_vectors.name ;
@@ -30,7 +30,7 @@ let test_legacy_vectors () =
   List.iter test_vectors.test_vectors ~f:check_test_vector
 
 let test_kimchi_vectors () =
-  let cur_dir = Sys.getcwd () in
+  let cur_dir = Sys_unix.getcwd () in
   let test_vector_file = Filename.concat cur_dir "kimchi.json" in
   let test_vectors = parse_test_vectors test_vector_file in
   check string "kimchi name" "kimchi" test_vectors.name ;

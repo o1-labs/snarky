@@ -57,7 +57,7 @@ WB19: Riad S. Wahby and Dan Boneh, Fast and simple constant-time hashing to the 
                    f(u + y^2)·(y^2 + uv + v^2 + ay)/y )
 *)
 
-open Core_kernel
+open Core
 module Field_intf = Field_intf
 module Bw19 = Bw19
 
@@ -91,11 +91,13 @@ module type S = sig
   end
 
   module Make
-      (Constant : Field_intf.S) (F : sig
+      (Constant : Field_intf.S)
+      (F : sig
         include Field_intf.S
 
         val constant : Constant.t -> t
-      end) (Params : sig
+      end)
+      (Params : sig
         val params : Constant.t Params.t
       end) : sig
     val potential_xs : F.t -> F.t * F.t * F.t
@@ -198,11 +200,13 @@ module Params = struct
 end
 
 module Make
-    (Constant : Field_intf.S) (F : sig
+    (Constant : Field_intf.S)
+    (F : sig
       include Field_intf.S
 
       val constant : Constant.t -> t
-    end) (P : sig
+    end)
+    (P : sig
       val params : Constant.t Params.t
     end) =
 struct

@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 module Bignum_bigint = Bigint
 
 let rec extended_euclidean a b =
@@ -190,14 +190,14 @@ end) : Snarky.Backend_intf.S = struct
     type constraint_ = Constraint.t
 
     type t =
-      { public_input_size : int Core_kernel.Set_once.t
-      ; auxiliary_input_size : int Core_kernel.Set_once.t
+      { public_input_size : int Set_once.t
+      ; auxiliary_input_size : int Set_once.t
       ; constraints : constraint_ Deque.t
       }
 
     let create () =
-      { public_input_size = Core_kernel.Set_once.create ()
-      ; auxiliary_input_size = Core_kernel.Set_once.create ()
+      { public_input_size = Set_once.create ()
+      ; auxiliary_input_size = Set_once.create ()
       ; constraints = Deque.create ()
       }
 
@@ -208,10 +208,10 @@ end) : Snarky.Backend_intf.S = struct
     let digest _ = failwith "R1CSSystem.digest not implemented"
 
     let set_primary_input_size t size =
-      Core_kernel.Set_once.set_exn t.public_input_size [%here] size
+      Set_once.set_exn t.public_input_size [%here] size
 
     let set_auxiliary_input_size t size =
-      Core_kernel.Set_once.set_exn t.auxiliary_input_size [%here] size
+      Set_once.set_exn t.auxiliary_input_size [%here] size
 
     let get_public_input_size t = t.public_input_size
 

@@ -2,7 +2,7 @@
  (name interval_union)
  (public_name interval_union)
  (library_flags -linkall)
- (libraries core_kernel)
+ (libraries core)
  (preprocess
   (pps ppx_jane ppx_deriving.eq bisect_ppx -- --conditional))
  (synopsis "Union of intervals data structure"))

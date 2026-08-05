@@ -29,11 +29,13 @@ module type S = sig
   end
 
   module Make
-      (Constant : Field_intf.S) (F : sig
+      (Constant : Field_intf.S)
+      (F : sig
         include Field_intf.S
 
         val constant : Constant.t -> t
-      end) (_ : sig
+      end)
+      (_ : sig
         val params : Constant.t Params.t
       end) : sig
     val potential_xs : F.t -> F.t * F.t * F.t

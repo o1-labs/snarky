@@ -2,7 +2,7 @@
  (name fold_lib)
  (public_name fold_lib)
  (library_flags -linkall)
- (libraries core_kernel)
+ (libraries core)
  (preprocess
   (pps ppx_jane ppx_deriving.eq bisect_ppx -- --conditional))
  (synopsis "fold types"))

@@ -7,4 +7,4 @@
   (flags -verbose -show-counts))
  (libraries
   snarkette ; This is actually just needed in tests
-  core_kernel))
+  core))

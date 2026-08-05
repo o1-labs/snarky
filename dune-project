@@ -19,7 +19,7 @@
  (description "A helper library for bitstrings in snarky")
  (depends
   bisect_ppx
-  (core_kernel (and (>= v0.14) (< v0.15)))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
@@ -33,7 +33,7 @@
  (depends
   (alcotest :with-test)
   (bisect_ppx :with-test)
-  (core_kernel (and (>= v0.14) (< v0.15)))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
@@ -44,7 +44,7 @@
  (synopsis "A library for elliptic curve operations")
  (description "A library for elliptic curve operations")
  (depends
-  (core_kernel (and (>= v0.14) (< v0.15)))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   snarkette))
@@ -66,7 +66,7 @@
  (depends
   (alcotest :with-test)
   (bisect_ppx :with-test)
-  (core_kernel (and (>= v0.14) (< v0.15)))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
@@ -77,7 +77,7 @@
  (synopsis "PPX extension for snarky")
  (description "PPX extension for snarky")
  (depends
-  (core_kernel (and (>= v0.14) (< v0.15)))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppxlib
@@ -90,7 +90,7 @@
  (depends
   (bisect_ppx :with-test)
   bignum
-  (core_kernel (and (>= v0.14) (< v0.15)))
+  (core (>= v0.16))
   (dune :build)
   fold_lib
   (ocaml (>= 4.07.0))
@@ -109,7 +109,7 @@
   bignum
   bitstring_lib
   (bisect_ppx (>= 2.0.0))
-  (core_kernel (and (>= v0.14) (< v0.15)))
+  (core (>= v0.16))
   (dune :build)
   fold_lib
   h_list
@@ -128,14 +128,14 @@
  (description "Elliptic curve library for snarky")
  (depends
   (bisect_ppx :with-test)
-  (core_kernel (and (>= v0.14) (< v0.15)))
-   digestif
+  (core (>= v0.16))
+  digestif
   (dune :build)
-   group_map
+  group_map
   (ocaml (>= 4.07.0))
-   ppx_deriving
-   ppx_jane
-   snarky))
+  ppx_deriving
+  ppx_jane
+  snarky))
 
 (package
  (name snarky_integer)
@@ -143,12 +143,12 @@
  (description "Integer library for snarky")
  (depends
   (bisect_ppx :with-test)
-  (core_kernel (and (>= v0.14) (< v0.15)))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
-   ppx_deriving
-   ppx_jane
-   snarky))
+  ppx_deriving
+  ppx_jane
+  snarky))
 
 (package
  (name snarky_signature)
@@ -156,7 +156,7 @@
  (description "Signature library for snarky")
  (depends
   (bisect_ppx :with-test)
-  (core_kernel (and (>= v0.14) (< v0.15)))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
@@ -170,7 +170,8 @@
  (depends
   (alcotest :with-test)
   (bisect_ppx :with-test)
-  (core_kernel (and (>= v0.14) (< v0.15)))
+  (core_unix (and (>= v0.16) :with-test))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
@@ -183,7 +184,7 @@
  (description "A library for working with tuples")
  (depends
   (bisect_ppx :with-test)
-  (core_kernel (and (>= v0.14) (< v0.15)))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving

@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 open Alcotest
 open Fold_lib
 

@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 
 let int_to_bits ~length n =
   let ith_bit i = (n lsr i) land 1 = 1 in
@@ -8,7 +8,8 @@ let int_of_bits bs =
   List.foldi bs ~init:0 ~f:(fun i acc b -> if b then acc + (1 lsl i) else acc)
 
 module Make
-    (Impl : Snark_intf.Basic) (M : sig
+    (Impl : Snark_intf.Basic)
+    (M : sig
       type t [@@deriving enum]
     end) =
 struct
@@ -58,7 +59,8 @@ end
 
 module Run = struct
   module Make
-      (Impl : Snark_intf.Run_basic) (M : sig
+      (Impl : Snark_intf.Run_basic)
+      (M : sig
         type t [@@deriving enum]
       end) =
   struct

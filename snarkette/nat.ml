@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 
 type t = Big_int.big_int
 

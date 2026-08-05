@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 open Interval_union
 
 let int_pair = Alcotest.(pair int int)

@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 
 type 'a t = 'a * 'a * 'a * 'a [@@deriving bin_io, sexp, eq, compare]
 

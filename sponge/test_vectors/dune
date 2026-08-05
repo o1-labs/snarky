@@ -2,4 +2,4 @@
  (name main)
  (package sponge)
  (deps legacy.json kimchi.json)
- (libraries alcotest core_kernel snarkette sponge))
+ (libraries alcotest core_unix.sys_unix snarkette sponge))

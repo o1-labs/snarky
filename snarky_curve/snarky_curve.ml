@@ -101,7 +101,7 @@ module Make_checked (Inputs : Inputs_intf) = struct
               let x_squared = read typ x_squared in
               let ay = read typ ay in
               let open F.Constant in
-              (x_squared + x_squared + x_squared + Params.a) * inv_exn (ay + ay))
+              (x_squared + x_squared + x_squared + Params.a) * inv_exn (ay + ay) )
     in
     let bx =
       exists typ
@@ -111,7 +111,7 @@ module Make_checked (Inputs : Inputs_intf) = struct
               let lambda = read typ lambda in
               let ax = read typ ax in
               let open F.Constant in
-              square lambda - (ax + ax))
+              square lambda - (ax + ax) )
     in
     let by =
       exists typ
@@ -122,7 +122,7 @@ module Make_checked (Inputs : Inputs_intf) = struct
               and ax = read typ ax
               and ay = read typ ay
               and bx = read typ bx in
-              F.Constant.((lambda * (ax - bx)) - ay))
+              F.Constant.((lambda * (ax - bx)) - ay) )
     in
     let two = Field.Constant.of_int 2 in
     (* A: 1
@@ -164,7 +164,7 @@ module Make_checked (Inputs : Inputs_intf) = struct
               let ax = read typ ax
               and bx = read typ bx
               and lambda = read typ lambda in
-              Constant.(square lambda - (ax + bx)))
+              Constant.(square lambda - (ax + bx)) )
     in
 
     (* lambda^2 = cx + ax + bx
@@ -183,7 +183,7 @@ module Make_checked (Inputs : Inputs_intf) = struct
               and ay = read typ ay
               and cx = read typ cx
               and lambda = read typ lambda in
-              Constant.((lambda * (ax - cx)) - ay))
+              Constant.((lambda * (ax - cx)) - ay) )
     in
     (* A: 1
        B: 2
@@ -253,10 +253,11 @@ module Make_checked (Inputs : Inputs_intf) = struct
     val if_ : Boolean.var -> then_:t -> else_:t -> t
   end
 
-  module Shifted (M : sig
-    val shift : t
-  end)
-  () : Shifted_intf = struct
+  module Shifted
+      (M : sig
+        val shift : t
+      end)
+      () : Shifted_intf = struct
     type t = F.t * F.t
 
     let zero = M.shift
@@ -313,7 +314,7 @@ module type Native_base_field_inputs = sig
 end
 
 module For_native_base_field (Inputs : Native_base_field_inputs) = struct
-  open Core_kernel
+  open Core
   open Inputs
   open Impl
   include Make_checked (Inputs)
@@ -467,9 +468,9 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
   let multiscale_known pairs =
     Array.map pairs ~f:(fun (s, g) -> scale_known g s)
     |> Array.reduce_exn ~f:(fun t1 t2 ->
-           { value = add_exn t1.value t2.value
-           ; shift = Constant.(t1.shift + t2.shift)
-           } )
+        { value = add_exn t1.value t2.value
+        ; shift = Constant.(t1.shift + t2.shift)
+        } )
     |> unshift
 
   let scale_known pc bs = unshift (scale_known pc bs)
@@ -482,7 +483,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
           As_prover.(
             fun () ->
               if read Boolean.typ b then read Field.typ y
-              else Field.Constant.negate (read Field.typ y))
+              else Field.Constant.negate (read Field.typ y) )
     in
     assert_r1cs y Field.((of_int 2 * (b :> Field.t)) - of_int 1) y' ;
     (x, y')

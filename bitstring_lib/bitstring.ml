@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 
 module type S = sig
   type 'a t = private 'a list

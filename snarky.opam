@@ -14,7 +14,7 @@ depends: [
   "bignum"
   "bitstring_lib"
   "bisect_ppx" {>= "2.0.0"}
-  "core_kernel" {>= "v0.14" & < "v0.15"}
+  "core" {>= "v0.16"}
   "dune" {>= "3.0" & build}
   "fold_lib"
   "h_list"

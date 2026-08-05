@@ -1,18 +1,20 @@
-open Core_kernel
+open Core
 
-module Make (Backend : sig
-  module Field : sig
-    type t
-  end
+module Make
+    (Backend : sig
+      module Field : sig
+        type t
+      end
 
-  module Cvar : sig
-    type t
-  end
-end)
-(Types : Types.Types
-           with type field = Backend.Field.t
-            and type field_var = Backend.Cvar.t
-            and type 'a As_prover.t = (Backend.Cvar.t -> Backend.Field.t) -> 'a) :
+      module Cvar : sig
+        type t
+      end
+    end)
+    (Types :
+      Types.Types
+        with type field = Backend.Field.t
+         and type field_var = Backend.Cvar.t
+         and type 'a As_prover.t = (Backend.Cvar.t -> Backend.Field.t) -> 'a) :
   As_prover_intf.S with module Types := Types = struct
   type 'a t = 'a Types.As_prover.t
 

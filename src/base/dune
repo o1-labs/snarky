@@ -4,7 +4,7 @@
  (inline_tests)
  (libraries
   bitstring_lib
-  core_kernel
+  core
   h_list
   interval_union
   snarky_intf

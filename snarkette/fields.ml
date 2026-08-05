@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 open Fold_lib
 open Tuple_lib
 
@@ -193,7 +193,8 @@ module Extend (F : Basic_intf) = struct
 end
 
 module Make_fp
-    (N : Nat_intf.S) (Info : sig
+    (N : Nat_intf.S)
+    (Info : sig
       val order : N.t
     end) : Fp_intf with module Nat = N and type t = private N.t = struct
   include Info
@@ -416,7 +417,8 @@ let find_wnaf (type t) (module N : Nat_intf.S with type t = t) window_size
   go scalar 0 ; res
 
 module Make_fp3
-    (Fp : Intf) (Info : sig
+    (Fp : Intf)
+    (Info : sig
       val non_residue : Fp.t
 
       val frobenius_coeffs_c1 : Fp.t array
@@ -528,7 +530,8 @@ end = struct
 end
 
 module Make_fp2
-    (Fp : Intf) (Info : sig
+    (Fp : Intf)
+    (Info : sig
       val non_residue : Fp.t
     end) : sig
   include Degree_2_extension_intf with type base = Fp.t and module Nat = Fp.Nat
@@ -609,13 +612,15 @@ end
 module Make_fp6
     (N : Nat_intf.S)
     (Fp : Intf)
-    (Fp2 : Degree_2_extension_intf with type base = Fp.t) (Fp3 : sig
+    (Fp2 : Degree_2_extension_intf with type base = Fp.t)
+    (Fp3 : sig
       include Degree_3_extension_intf with type base = Fp.t
 
       val frobenius : t -> int -> t
 
       val non_residue : Fp.t
-    end) (Info : sig
+    end)
+    (Info : sig
       val non_residue : Fp.t
 
       val frobenius_coeffs_c1 : Fp.t array

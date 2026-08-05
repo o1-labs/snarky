@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 open Snarky_backendless
 open Snark
 module B = Bigint
