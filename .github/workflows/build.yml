@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Get code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Use OCaml ${{ matrix.toolchain.ocaml }}
         uses: ocaml/setup-ocaml@v3
